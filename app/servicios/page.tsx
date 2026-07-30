@@ -15,9 +15,15 @@ export default async function ServiciosPage() {
   const ids = (barberos as unknown as Barbero[] | null)?.map((b) => b.id) || []
   if (ids.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16">
-        <h1 className="text-3xl font-bold mb-8">Servicios y Precios</h1>
-        <p className="text-neutral-500">Próximamente...</p>
+      <div>
+        <section className="bg-[#171713] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+          <div className="mx-auto max-w-7xl">
+            <h1 className="text-5xl font-black text-white sm:text-7xl">Servicios y Precios</h1>
+          </div>
+        </section>
+        <section className="mx-auto max-w-7xl px-5 py-16">
+          <p className="text-stone-500">Próximamente...</p>
+        </section>
       </div>
     )
   }
@@ -39,28 +45,45 @@ export default async function ServiciosPage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-8">Servicios y Precios</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {grouped.map(({ barbero, servicios }) => (
-          <div key={barbero.id} className="bg-neutral-50 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">{barbero.nombre}</h2>
-            <div className="space-y-3">
-              {servicios.map((bs) => (
-                <div key={bs.id} className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{bs.servicios?.nombre}</p>
-                    <p className="text-sm text-neutral-500">{bs.servicios?.duracion_minutos} min</p>
+    <div>
+      <section className="bg-[#171713] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.24em] text-amber-400">
+            <span className="h-px w-10 bg-amber-400" /> Precios
+          </p>
+          <h1 className="max-w-3xl text-5xl font-black leading-[.93] tracking-[-0.055em] text-white sm:text-7xl">
+            Servicios y precios.
+          </h1>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
+        <div className="grid gap-10 md:grid-cols-2">
+          {grouped.map(({ barbero, servicios }) => (
+            <div key={barbero.id}>
+              <h2 className="text-lg font-extrabold text-stone-900">{barbero.nombre}</h2>
+              <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white">
+                {servicios.map((bs, i) => (
+                  <div
+                    key={bs.id}
+                    className={`flex items-center justify-between px-5 py-4 ${
+                      i < servicios.length - 1 ? 'border-b border-stone-100' : ''
+                    }`}
+                  >
+                    <div>
+                      <p className="font-bold text-stone-900">{bs.servicios?.nombre}</p>
+                      <p className="mt-0.5 text-sm text-stone-500">{bs.servicios?.duracion_minutos} min</p>
+                    </div>
+                    <span className="text-xl font-black text-amber-600">
+                      ${bs.precio.toLocaleString('es-CL')}
+                    </span>
                   </div>
-                  <span className="text-lg font-semibold text-amber-600">
-                    ${bs.precio.toLocaleString('es-CL')}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

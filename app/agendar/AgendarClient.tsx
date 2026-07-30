@@ -8,6 +8,13 @@ import type { Barbero, Servicio, BarberoServicio } from '@/lib/types'
 type Step = 'barbero' | 'servicio' | 'horario' | 'datos' | 'confirmacion'
 type BarberoServicioConServicio = BarberoServicio & { servicios: Servicio }
 
+const STEPS: { key: Step; label: string }[] = [
+  { key: 'barbero', label: 'Barbero' },
+  { key: 'servicio', label: 'Servicio' },
+  { key: 'horario', label: 'Horario' },
+  { key: 'datos', label: 'Datos' },
+]
+
 export default function AgendarClient() {
   const [step, setStep] = useState<Step>('barbero')
   const [selectedBarbero, setSelectedBarbero] = useState<Barbero | null>(null)
@@ -22,6 +29,8 @@ export default function AgendarClient() {
   const [error, setError] = useState('')
 
   const supabase = useMemo(() => createClient(), [])
+
+  const stepIndex = STEPS.findIndex((s) => s.key === step)
 
   async function handleSelectBarbero(barbero: Barbero) {
     setSelectedBarbero(barbero)
@@ -171,168 +180,222 @@ export default function AgendarClient() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-8">Agendar Hora</h1>
+    <div className="mx-auto max-w-2xl px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
+      {step !== 'confirmacion' && (
+        <div className="mb-10 flex items-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <div
+                className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                  i <= stepIndex
+                    ? 'bg-amber-400 text-stone-950'
+                    : 'bg-stone-200 text-stone-400'
+                }`}
+              >
+                {i + 1}
+              </div>
+              <span
+                className={`hidden text-xs font-semibold sm:block ${
+                  i <= stepIndex ? 'text-stone-900' : 'text-stone-400'
+                }`}
+              >
+                {s.label}
+              </span>
+              {i < STEPS.length - 1 && (
+                <div className={`h-px w-6 ${i < stepIndex ? 'bg-amber-400' : 'bg-stone-200'}`} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
       {step === 'barbero' && (
         <div>
-          <h2 className="text-xl font-semibold mb-4">Elige tu barbero</h2>
-          <BarberoSelector
-            onSelect={handleSelectBarbero}
-            selectedId={selectedBarbero?.id}
-          />
+          <h2 className="text-2xl font-black text-stone-900">Elige tu barbero</h2>
+          <p className="mt-1 text-sm text-stone-500">Selecciona con quién quieres agendar.</p>
+          <div className="mt-6">
+            <BarberoSelector
+              onSelect={handleSelectBarbero}
+              selectedId={selectedBarbero?.id}
+            />
+          </div>
         </div>
       )}
 
       {step === 'servicio' && (
         <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Elige servicio con {selectedBarbero?.nombre}
+          <h2 className="text-2xl font-black text-stone-900">
+            Elige tu servicio
           </h2>
-          {loading ? (
-            <p className="text-neutral-500">Cargando servicios...</p>
-          ) : (
-            <div className="space-y-3">
-              {servicios.map((bs) => (
+          <p className="mt-1 text-sm text-stone-500">Con {selectedBarbero?.nombre}</p>
+          <div className="mt-6 space-y-2">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-xl bg-stone-200" />
+                ))}
+              </div>
+            ) : (
+              servicios.map((bs) => (
                 <button
                   key={bs.id}
                   onClick={() => handleSelectServicio(bs)}
-                  className="w-full text-left bg-neutral-50 hover:bg-neutral-100 p-4 rounded-lg border transition-colors"
+                  className="flex w-full items-center justify-between rounded-xl border border-stone-200 bg-white px-5 py-4 text-left transition hover:border-amber-400 hover:shadow-sm"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold">{bs.servicios.nombre}</p>
-                      <p className="text-sm text-neutral-500">
-                        {bs.servicios.duracion_minutos} min
-                      </p>
-                    </div>
-                    <span className="text-lg font-semibold text-amber-600">
-                      ${bs.precio.toLocaleString('es-CL')}
-                    </span>
+                  <div>
+                    <p className="font-bold text-stone-900">{bs.servicios.nombre}</p>
+                    <p className="mt-0.5 text-sm text-stone-500">{bs.servicios.duracion_minutos} min</p>
                   </div>
+                  <span className="text-xl font-black text-amber-600">
+                    ${bs.precio.toLocaleString('es-CL')}
+                  </span>
                 </button>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {step === 'horario' && (
         <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Selecciona fecha y hora
-          </h2>
+          <h2 className="text-2xl font-black text-stone-900">Elige fecha y hora</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            {selectedServicio?.servicios.nombre} · {selectedServicio?.servicios.duracion_minutos} min
+          </p>
+
           {loading ? (
-            <p className="text-neutral-500">Calculando disponibilidad...</p>
+            <div className="mt-6 space-y-3">
+              <div className="h-24 animate-pulse rounded-xl bg-stone-200" />
+              <div className="h-12 animate-pulse rounded-xl bg-stone-200" />
+            </div>
           ) : fechasDisponibles.length === 0 ? (
-            <p className="text-neutral-500">
-              No hay horarios disponibles en los próximos 7 días.
-            </p>
+            <p className="mt-8 text-stone-500">No hay horarios disponibles en los próximos 7 días.</p>
           ) : !selectedFecha ? (
-            <>
-              <p className="text-sm text-neutral-500 mb-4">Elige un día disponible:</p>
-              <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="mt-6">
+              <p className="mb-4 text-sm font-semibold text-stone-500">DÍA</p>
+              <div className="flex gap-3 overflow-x-auto pb-2">
                 {fechasDisponibles.map((fd) => (
                   <button
                     key={fd.fecha}
                     onClick={() => handleSelectDate(fd.fecha)}
-                    className="flex flex-col items-center gap-1 p-3 min-w-[90px] rounded-xl border bg-neutral-50 hover:bg-neutral-100 hover:border-amber-400 transition-colors"
+                    className="flex shrink-0 flex-col items-center gap-1 rounded-xl border border-stone-200 bg-white px-4 py-3 transition hover:border-amber-400 hover:shadow-sm"
                   >
-                    <span className="text-xs uppercase text-neutral-500 font-medium">
+                    <span className="text-xs font-semibold uppercase text-stone-500">
                       {fd.label.split(' ')[0]}
                     </span>
-                    <span className="text-lg font-bold">
+                    <span className="text-2xl font-black text-stone-900">
                       {new Date(fd.fecha + 'T12:00:00').getDate()}
                     </span>
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-stone-500">
                       {new Date(fd.fecha + 'T12:00:00').toLocaleDateString('es-CL', { month: 'short' })}
                     </span>
-                    <span className="text-xs text-amber-600 font-medium mt-1">
-                      {fd.slots.length} horarios
+                    <span className="mt-1 text-xs font-bold text-amber-600">
+                      {fd.slots.length} {fd.slots.length === 1 ? 'horario' : 'horarios'}
                     </span>
                   </button>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
-            <>
-              <div className="flex items-center gap-2 mb-4">
+            <div className="mt-6">
+              <div className="mb-4 flex items-center gap-2">
                 <button
                   onClick={() => setSelectedFecha('')}
-                  className="text-neutral-500 hover:text-neutral-700"
+                  className="grid h-8 w-8 place-items-center rounded-full border border-stone-200 text-sm text-stone-500 transition hover:border-stone-400"
                 >
                   ←
                 </button>
-                <p className="text-sm text-neutral-500">
-                  Horarios disponibles para{' '}
-                  <strong>
-                    {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-CL', {
-                      weekday: 'long', day: 'numeric', month: 'long'
-                    })}
-                  </strong>
+                <p className="text-sm font-semibold text-stone-900">
+                  {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-CL', {
+                    weekday: 'long', day: 'numeric', month: 'long'
+                  })}
                 </p>
               </div>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">HORARIO</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {fechasDisponibles
                   .find((fd) => fd.fecha === selectedFecha)
                   ?.slots.map((hora) => (
                     <button
                       key={hora}
                       onClick={() => handleSelectHora(hora)}
-                      className="bg-neutral-50 hover:bg-amber-50 hover:border-amber-400 p-3 rounded-lg border text-center transition-colors"
+                      className="rounded-xl border border-stone-200 bg-white px-3 py-3 text-center text-sm font-bold text-stone-900 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
                     >
-                      <span className="text-sm font-medium">{hora}</span>
+                      {hora}
                     </button>
                   ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       )}
 
       {step === 'datos' && (
         <div>
-          <h2 className="text-xl font-semibold mb-4">Tus datos</h2>
-          <div className="bg-neutral-50 p-4 rounded-lg mb-6 space-y-1 text-sm">
-            <p><strong>Barbero:</strong> {selectedBarbero?.nombre}</p>
-            <p><strong>Servicio:</strong> {selectedServicio?.servicios.nombre}</p>
-            <p><strong>Fecha:</strong> {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-CL')}</p>
-            <p><strong>Hora:</strong> {selectedHora}</p>
-            <p><strong>Precio:</strong> ${selectedServicio?.precio.toLocaleString('es-CL')}</p>
+          <h2 className="text-2xl font-black text-stone-900">Tus datos</h2>
+          <p className="mt-1 text-sm text-stone-500">Completa tu información para confirmar la reserva.</p>
+
+          <div className="mt-6 space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-5">
+            <div className="flex justify-between text-sm">
+              <span className="text-stone-500">Barbero</span>
+              <span className="font-bold text-stone-900">{selectedBarbero?.nombre}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-stone-500">Servicio</span>
+              <span className="font-bold text-stone-900">{selectedServicio?.servicios.nombre}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-stone-500">Fecha</span>
+              <span className="font-bold text-stone-900">
+                {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-CL', {
+                  weekday: 'short', day: 'numeric', month: 'short'
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-stone-500">Hora</span>
+              <span className="font-bold text-stone-900">{selectedHora}</span>
+            </div>
+            <div className="flex justify-between border-t border-stone-200 pt-3 text-sm">
+              <span className="text-stone-500">Total</span>
+              <span className="text-xl font-black text-amber-600">
+                ${selectedServicio?.precio.toLocaleString('es-CL')}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="mt-6 space-y-4">
             <input
               type="text"
               placeholder="Nombre completo"
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full border rounded-lg p-3"
+              className="w-full rounded-xl border border-stone-200 px-5 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
             <input
               type="tel"
               placeholder="Teléfono"
               value={form.telefono}
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              className="w-full border rounded-lg p-3"
+              className="w-full rounded-xl border border-stone-200 px-5 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
             <input
               type="email"
               placeholder="Email (obligatorio)"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border rounded-lg p-3"
+              className="w-full rounded-xl border border-stone-200 px-5 py-3 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
             />
             <button
               onClick={handleConfirmar}
               disabled={loading}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-50"
+              className="w-full rounded-full bg-amber-400 px-7 py-4 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:opacity-50"
             >
               {loading ? 'Confirmando...' : 'Confirmar Reserva'}
             </button>
@@ -341,44 +404,48 @@ export default function AgendarClient() {
       )}
 
       {step === 'confirmacion' && (
-        <div className="text-center py-8">
-          <div className="text-6xl mb-4">✓</div>
-          <h2 className="text-2xl font-bold mb-2">¡Hora Agendada!</h2>
-          <p className="text-neutral-600 mb-4">
+        <div className="text-center">
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-100 text-4xl">
+            ✓
+          </div>
+          <h2 className="mt-6 text-3xl font-black text-stone-900">¡Hora agendada!</h2>
+          <p className="mt-2 text-stone-500">
             Tu código de gestión es:
           </p>
-          <p className="text-3xl font-mono font-bold text-amber-600 mb-6">
+          <p className="mt-3 text-2xl font-black tracking-widest text-amber-600">
             {codigoGestion}
           </p>
-          <p className="text-neutral-600 mb-2">
+          <p className="mt-6 text-sm text-stone-500">
             Recibirás la confirmación por email cuando se configure el servicio de notificaciones.
           </p>
-          <p className="text-neutral-500 text-sm">
+          <p className="mt-1 text-sm text-stone-500">
             Puedes cancelar o reprogramar tu cita con este código.
           </p>
         </div>
       )}
 
-      {step === 'horario' && selectedFecha && (
-        <button
-          onClick={() => setSelectedFecha('')}
-          className="mt-4 text-neutral-500 hover:text-neutral-700 text-sm"
-        >
-          ← Cambiar fecha
-        </button>
-      )}
-      {step !== 'barbero' && step !== 'confirmacion' && (step !== 'horario' || !selectedFecha) && (
-        <button
-          onClick={() => {
-            if (step === 'servicio') setStep('barbero')
-            else if (step === 'horario') setStep('servicio')
-            else if (step === 'datos') { setSelectedHora(''); setStep('horario') }
-          }}
-          className="mt-4 text-neutral-500 hover:text-neutral-700 text-sm"
-        >
-          ← Volver
-        </button>
-      )}
+      <div className="mt-8 flex gap-3">
+        {step === 'horario' && selectedFecha && (
+          <button
+            onClick={() => setSelectedFecha('')}
+            className="rounded-full border border-stone-200 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:border-stone-400"
+          >
+            ← Cambiar fecha
+          </button>
+        )}
+        {step !== 'barbero' && step !== 'confirmacion' && (step !== 'horario' || !selectedFecha) && (
+          <button
+            onClick={() => {
+              if (step === 'servicio') setStep('barbero')
+              else if (step === 'horario') setStep('servicio')
+              else if (step === 'datos') { setSelectedHora(''); setStep('horario') }
+            }}
+            className="rounded-full border border-stone-200 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:border-stone-400"
+          >
+            ← Volver
+          </button>
+        )}
+      </div>
     </div>
   )
 }
