@@ -76,48 +76,131 @@ app/
 ├─ barberos/page.tsx            → Listado de barberos
 ├─ servicios/page.tsx           → Catálogo de servicios y precios por barbero
 ├─ galeria/page.tsx             → Galería de fotos de cortes
-├─ agendar/page.tsx             → Flujo de reserva (barbero → servicio → hora → datos → confirmación)
-├─ gestionar/[codigo]/page.tsx  → Cancelar/reprogramar cita vía el token único
+├─ agendar/
+│  ├─ page.tsx                  → Wrapper server (force-dynamic)
+│  └─ AgendarClient.tsx         → Flujo de reserva (barbero → servicio → hora → datos → confirmación)
+├─ gestionar/[codigo]/page.tsx  → Cancelar cita vía código único (usa RPC)
 │
-└─ admin/
-   ├─ login/page.tsx            → Login de barberos/dueño
-   ├─ layout.tsx                → Verifica sesión (middleware), redirige si no hay login
-   ├─ page.tsx                  → Dashboard (agenda del día)
-   ├─ citas/page.tsx            → Listado/calendario de citas, con filtros
-   ├─ barberos/page.tsx         → CRUD de barberos
-   ├─ servicios/page.tsx        → CRUD de servicios + precio por barbero
-   └─ horarios/page.tsx         → Bloqueos de horas/días por barbero
+├─ admin/
+│  ├─ login/page.tsx            → Login de barberos/dueño
+│  ├─ layout.tsx                → Verifica sesión, redirige si no hay login
+│  ├─ page.tsx                  → Dashboard (agenda del día)
+│  ├─ citas/
+│  │  ├─ page.tsx               → Listado/calendario de citas
+│  │  └─ AdminCitasClient.tsx   → Filtros + acciones (confirmar/completar/cancelar)
+│  ├─ barberos/
+│  │  ├─ page.tsx               → CRUD de barberos
+│  │  └─ AdminBarberosClient.tsx
+│  ├─ servicios/
+│  │  ├─ page.tsx               → CRUD de servicios + precio por barbero
+│  │  └─ AdminServiciosClient.tsx
+│  └─ horarios/
+│     ├─ page.tsx               → Bloqueos de horas/días por barbero
+│     └─ AdminHorariosClient.tsx
+│
+├─ auth/logout/route.ts          → POST logout
 
-middleware.ts                   → Protege /admin/* verificando la sesión de Supabase
+components/
+├─ Header.tsx
+├─ Footer.tsx
+└─ BarberoSelector.tsx          → Selector de barbero para el flujo de agendamiento
+
+lib/
+├─ types.ts                     → Tipos TypeScript de todas las tablas
+└─ supabase/
+   ├─ client.ts                 → Cliente browser
+   ├─ server.ts                 → Cliente server (cookies)
+   └─ middleware.ts             → Middleware de refresco de sesión
+
+supabase_schema.sql             → Script completo: tablas, RLS, RPCs, seed data
+proxy.ts                       → Middleware App Router (reemplaza middleware.ts legacy)
+middleware.ts                  → (legacy)
+```
+
+## Cómo empezar
+
+### Requisitos
+
+- Node.js 18+
+- npm
+- Una cuenta en [Supabase](https://supabase.com) (plan free)
+
+### 1. Configurar Supabase
+
+1. Crea un proyecto en [Supabase Dashboard](https://supabase.com/dashboard).
+2. Ve a **SQL Editor**, pega y ejecuta todo el contenido de [`supabase_schema.sql`](./supabase_schema.sql).
+3. En **Authentication → Users → Add user**, crea el usuario admin (el que usará el panel `/admin`).
+4. Copia el UUID del usuario creado y ejecuta en SQL Editor:
+   ```sql
+   insert into public.perfiles_admin (id, barbero_id, rol)
+   values ('UUID-DEL-USUARIO', null, 'admin');
+   ```
+5. Ve a **Project Settings → API** y copia los valores:
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` → `SUPABASE_SERVICE_ROLE_KEY` (solo si usas funciones de servidor)
+
+### 2. Configurar variables de entorno
+
+Crea o edita `.env.local` en la raíz del proyecto:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+```
+
+### 3. Instalar dependencias y correr
+
+```bash
+npm install
+npm run dev
+```
+
+El sitio estará en `http://localhost:3000`.
+
+- Ruta pública: `/`
+- Agendar hora: `/agendar`
+- Gestión de cita (usando código): `/gestionar/<codigo>`
+- Panel admin: `/admin/login`
+
+### 4. Build de producción
+
+```bash
+npm run build
+npm start
 ```
 
 ## Plan de desarrollo por etapas
 
-**Etapa 0 — Preparación**
-- Crear el proyecto Next.js y el repositorio Git.
-- Crear el proyecto en Supabase y definir las variables de entorno.
+**Etapa 0 — Preparación** ✅
+- [x] Crear el proyecto Next.js y el repositorio Git.
+- [x] Crear el proyecto en Supabase y definir las variables de entorno.
 
-**Etapa 1 — Modelo de datos y backend base**
-- Crear las tablas (`barberos`, `servicios`, `barbero_servicios`, `bloqueos`, `citas`, `perfiles_admin`) en Supabase.
-- Configurar las políticas de Row Level Security.
-- Cargar datos iniciales: los 2 barberos y el catálogo de servicios con sus precios.
+**Etapa 1 — Modelo de datos y backend base** ✅
+- [x] Script SQL completo con tablas, RLS, RPCs y seed data (`supabase_schema.sql`).
+- [x] Las 6 tablas creadas en Supabase.
+- [x] Políticas de Row Level Security configuradas.
+- [x] Funciones RPC seguras (`horas_ocupadas`, `obtener_cita_por_codigo`, `cancelar_cita_por_codigo`).
+- [x] Bucket de Storage para fotos.
+- [x] Datos semilla (barberos, servicios, precios).
 
-**Etapa 2 — Sitio público (contenido)**
-- Construir inicio, sobre nosotros, barberos, servicios y galería.
-- Integrar el logo, identidad visual y fotos que entregue la barbería.
+**Etapa 2 — Sitio público (contenido)** ✅
+- [x] Inicio, sobre nosotros, barberos, servicios y galería.
+- [x] Integrar el logo, identidad visual y fotos que entregue la barbería.
 
-**Etapa 3 — Flujo de agendamiento**
-- Selección de barbero → servicio → cálculo de horarios disponibles (respetando el horario de atención, los bloqueos y la ventana de 7 días).
-- Formulario de contacto y confirmación, con generación del código de gestión.
-- Envío del email de confirmación al cliente y de la notificación al Gmail del negocio.
+**Etapa 3 — Flujo de agendamiento** ✅
+- [x] Selección de barbero → servicio → cálculo de horarios disponibles (respetando el horario de atención, los bloqueos y la ventana de 7 días).
+- [x] Formulario de contacto y confirmación, con generación del código de gestión.
+- [ ] Envío del email de confirmación al cliente y de la notificación al Gmail del negocio.
 
-**Etapa 4 — Gestión de citas por el cliente**
-- Página `/gestionar/[codigo]` para cancelar/reprogramar, validando la regla de las 2 horas.
+**Etapa 4 — Gestión de citas por el cliente** ✅
+- [x] Página `/gestionar/[codigo]` para cancelar, validando la regla de las 2 horas (tanto en frontend como en backend vía RPC).
 
-**Etapa 5 — Panel de administración**
-- Login y protección de rutas.
-- Dashboard, CRUD de barberos y servicios (con precios), gestión de bloqueos.
-- Listado/calendario de citas con acciones de cancelar o marcar como completada.
+**Etapa 5 — Panel de administración** ✅
+- [x] Login y protección de rutas (middleware + server layout check).
+- [x] Dashboard, CRUD de barberos y servicios (con precios), gestión de bloqueos.
+- [x] Listado/calendario de citas con filtros y acciones (confirmar, completar, cancelar).
 
 **Etapa 6 — Recordatorios automáticos**
 - Job programado (Edge Function + cron) que revisa las citas próximas, envía el recordatorio por email y marca `recordatorio_enviado`.
