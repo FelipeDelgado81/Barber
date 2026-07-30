@@ -13,9 +13,9 @@ export default function AgendarClient() {
   const [selectedBarbero, setSelectedBarbero] = useState<Barbero | null>(null)
   const [servicios, setServicios] = useState<BarberoServicioConServicio[]>([])
   const [selectedServicio, setSelectedServicio] = useState<BarberoServicioConServicio | null>(null)
-  const [horarios, setHorarios] = useState<string[]>([])
-  const [selectedHora, setSelectedHora] = useState<string>('')
+  const [fechasDisponibles, setFechasDisponibles] = useState<{ fecha: string; label: string; slots: string[] }[]>([])
   const [selectedFecha, setSelectedFecha] = useState<string>('')
+  const [selectedHora, setSelectedHora] = useState<string>('')
   const [form, setForm] = useState({ nombre: '', telefono: '', email: '' })
   const [loading, setLoading] = useState(false)
   const [codigoGestion, setCodigoGestion] = useState('')
@@ -68,7 +68,6 @@ export default function AgendarClient() {
       p_hasta: fechas[fechas.length - 1],
     })
 
-    const slots: string[] = []
     const bloqueosMap = new Map<string, { inicio: string; fin: string }[]>()
     bloqueos?.forEach((b) => {
       if (!bloqueosMap.has(b.fecha)) bloqueosMap.set(b.fecha, [])
@@ -80,6 +79,8 @@ export default function AgendarClient() {
       if (!citasMap.has(c.fecha)) citasMap.set(c.fecha, [])
       citasMap.get(c.fecha)!.push({ inicio: c.hora_inicio, fin: c.hora_fin })
     })
+
+    const fechasConSlots: { fecha: string; label: string; slots: string[] }[] = []
 
     for (const fecha of fechas) {
       const bloqueosDia = bloqueosMap.get(fecha) || []
@@ -96,23 +97,34 @@ export default function AgendarClient() {
           return inicio < fh * 60 + fm && fin > h * 60 + m
         })
 
+      const slots: string[] = []
       for (let h = 9; h < 19; h++) {
         const hh = `${String(h).padStart(2, '0')}:00`
         const inicio = h * 60
         const fin = inicio + bs.servicios.duracion_minutos
         const esHoy = fecha === fechas[0]
         const yaPaso = esHoy && inicio <= ahora.getHours() * 60 + ahora.getMinutes()
-        if (fin <= 19 * 60 && !yaPaso && !ocupado(inicio, fin)) slots.push(`${fecha}T${hh}`)
+        if (fin <= 19 * 60 && !yaPaso && !ocupado(inicio, fin)) slots.push(hh)
+      }
+
+      if (slots.length > 0) {
+        const label = new Date(fecha + 'T12:00:00').toLocaleDateString('es-CL', {
+          weekday: 'short', day: 'numeric', month: 'short'
+        })
+        fechasConSlots.push({ fecha, label, slots })
       }
     }
 
-    setHorarios(slots)
+    setFechasDisponibles(fechasConSlots)
     setLoading(false)
   }
 
-  function handleSelectHorario(fechaHora: string) {
-    const [fecha, hora] = fechaHora.split('T')
+  function handleSelectDate(fecha: string) {
     setSelectedFecha(fecha)
+    setSelectedHora('')
+  }
+
+  function handleSelectHora(hora: string) {
     setSelectedHora(hora)
     setStep('datos')
   }
@@ -218,29 +230,68 @@ export default function AgendarClient() {
           </h2>
           {loading ? (
             <p className="text-neutral-500">Calculando disponibilidad...</p>
-          ) : horarios.length === 0 ? (
+          ) : fechasDisponibles.length === 0 ? (
             <p className="text-neutral-500">
               No hay horarios disponibles en los próximos 7 días.
             </p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {horarios.map((fh) => {
-                const [fecha, hora] = fh.split('T')
-                const fechaLabel = new Date(fecha + 'T12:00:00').toLocaleDateString('es-CL', {
-                  weekday: 'short', day: 'numeric', month: 'short'
-                })
-                return (
+          ) : !selectedFecha ? (
+            <>
+              <p className="text-sm text-neutral-500 mb-4">Elige un día disponible:</p>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {fechasDisponibles.map((fd) => (
                   <button
-                    key={fh}
-                    onClick={() => handleSelectHorario(fh)}
-                    className="bg-neutral-50 hover:bg-neutral-100 p-3 rounded-lg border text-sm transition-colors"
+                    key={fd.fecha}
+                    onClick={() => handleSelectDate(fd.fecha)}
+                    className="flex flex-col items-center gap-1 p-3 min-w-[90px] rounded-xl border bg-neutral-50 hover:bg-neutral-100 hover:border-amber-400 transition-colors"
                   >
-                    <span className="block font-medium">{fechaLabel}</span>
-                    <span className="block text-amber-600">{hora}</span>
+                    <span className="text-xs uppercase text-neutral-500 font-medium">
+                      {fd.label.split(' ')[0]}
+                    </span>
+                    <span className="text-lg font-bold">
+                      {new Date(fd.fecha + 'T12:00:00').getDate()}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(fd.fecha + 'T12:00:00').toLocaleDateString('es-CL', { month: 'short' })}
+                    </span>
+                    <span className="text-xs text-amber-600 font-medium mt-1">
+                      {fd.slots.length} horarios
+                    </span>
                   </button>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <button
+                  onClick={() => setSelectedFecha('')}
+                  className="text-neutral-500 hover:text-neutral-700"
+                >
+                  ←
+                </button>
+                <p className="text-sm text-neutral-500">
+                  Horarios disponibles para{' '}
+                  <strong>
+                    {new Date(selectedFecha + 'T12:00:00').toLocaleDateString('es-CL', {
+                      weekday: 'long', day: 'numeric', month: 'long'
+                    })}
+                  </strong>
+                </p>
+              </div>
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                {fechasDisponibles
+                  .find((fd) => fd.fecha === selectedFecha)
+                  ?.slots.map((hora) => (
+                    <button
+                      key={hora}
+                      onClick={() => handleSelectHora(hora)}
+                      className="bg-neutral-50 hover:bg-amber-50 hover:border-amber-400 p-3 rounded-lg border text-center transition-colors"
+                    >
+                      <span className="text-sm font-medium">{hora}</span>
+                    </button>
+                  ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -308,12 +359,20 @@ export default function AgendarClient() {
         </div>
       )}
 
-      {step !== 'barbero' && step !== 'confirmacion' && (
+      {step === 'horario' && selectedFecha && (
+        <button
+          onClick={() => setSelectedFecha('')}
+          className="mt-4 text-neutral-500 hover:text-neutral-700 text-sm"
+        >
+          ← Cambiar fecha
+        </button>
+      )}
+      {step !== 'barbero' && step !== 'confirmacion' && (step !== 'horario' || !selectedFecha) && (
         <button
           onClick={() => {
             if (step === 'servicio') setStep('barbero')
             else if (step === 'horario') setStep('servicio')
-            else if (step === 'datos') setStep('horario')
+            else if (step === 'datos') { setSelectedHora(''); setStep('horario') }
           }}
           className="mt-4 text-neutral-500 hover:text-neutral-700 text-sm"
         >
