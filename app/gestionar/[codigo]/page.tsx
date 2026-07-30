@@ -3,24 +3,32 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Cita } from '@/lib/types'
+
+type CitaGestion = {
+  id: string
+  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada'
+  codigo_gestion: string
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  barbero_nombre: string
+  servicio_nombre: string
+}
 
 export default function GestionarPage() {
   const { codigo } = useParams<{ codigo: string }>()
-  const [cita, setCita] = useState<Cita | null>(null)
+  const [cita, setCita] = useState<CitaGestion | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('citas')
-      .select('*, barberos(*), servicios(*)')
-      .eq('codigo_gestion', codigo)
+      .rpc('obtener_cita_por_codigo', { p_codigo: codigo })
       .single()
       .then(({ data, error }) => {
         if (error || !data) setError('Cita no encontrada')
-        else setCita(data as unknown as Cita)
+        else setCita(data as CitaGestion)
         setLoading(false)
       })
   }, [codigo])
@@ -29,13 +37,16 @@ export default function GestionarPage() {
     if (!cita) return
     if (!confirm('¿Estás seguro de cancelar esta cita?')) return
     const supabase = createClient()
-    const { error } = await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', cita.id)
-    if (error) {
-      setError('No fue posible cancelar la cita. Intenta nuevamente.')
+    const { data, error } = await supabase
+      .rpc('cancelar_cita_por_codigo', { p_codigo: codigo })
+      .single()
+    const resultado = data as { ok: boolean; mensaje: string } | null
+    if (error || !resultado?.ok) {
+      setError(resultado?.mensaje || 'No fue posible cancelar la cita. Intenta nuevamente.')
       return
     }
     setCita({ ...cita, estado: 'cancelada' })
-  }, [cita])
+  }, [cita, codigo])
 
   if (loading) return <div className="max-w-xl mx-auto px-4 py-16"><p className="text-neutral-500">Cargando...</p></div>
   if (error || !cita) return <div className="max-w-xl mx-auto px-4 py-16"><p className="text-red-600">{error || 'Cita no encontrada'}</p></div>
@@ -69,11 +80,11 @@ export default function GestionarPage() {
         </div>
         <div className="flex justify-between">
           <span className="text-neutral-600">Barbero</span>
-          <span>{cita.barberos?.nombre || '—'}</span>
+          <span>{cita.barbero_nombre || '—'}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-neutral-600">Servicio</span>
-          <span>{cita.servicios?.nombre || '—'}</span>
+          <span>{cita.servicio_nombre || '—'}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-neutral-600">Fecha</span>

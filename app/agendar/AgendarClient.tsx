@@ -62,13 +62,11 @@ export default function AgendarClient() {
       .gte('fecha', fechas[0])
       .lte('fecha', fechas[fechas.length - 1])
 
-    const { data: citas } = await supabase
-      .from('citas')
-      .select('fecha, hora_inicio, hora_fin')
-      .eq('barbero_id', selectedBarbero!.id)
-      .in('estado', ['pendiente', 'confirmada'])
-      .gte('fecha', fechas[0])
-      .lte('fecha', fechas[fechas.length - 1])
+    const { data: citas } = await supabase.rpc('horas_ocupadas', {
+      p_barbero_id: selectedBarbero!.id,
+      p_desde: fechas[0],
+      p_hasta: fechas[fechas.length - 1],
+    })
 
     const slots: string[] = []
     const bloqueosMap = new Map<string, { inicio: string; fin: string }[]>()
@@ -78,7 +76,7 @@ export default function AgendarClient() {
     })
 
     const citasMap = new Map<string, { inicio: string; fin: string }[]>()
-    citas?.forEach((c) => {
+    citas?.forEach((c: { fecha: string; hora_inicio: string; hora_fin: string }) => {
       if (!citasMap.has(c.fecha)) citasMap.set(c.fecha, [])
       citasMap.get(c.fecha)!.push({ inicio: c.hora_inicio, fin: c.hora_fin })
     })
