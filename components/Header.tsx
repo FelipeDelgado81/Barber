@@ -10,7 +10,6 @@ const navLinks = [
   { href: '/barberos', label: 'Barberos' },
   { href: '/servicios', label: 'Servicios' },
   { href: '/galeria', label: 'Galería' },
-  { href: '/agendar', label: 'Agendar Hora' },
 ]
 
 export default function Header() {
