@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #fafaf9;
+}
+
+::selection {
+  background: #fbbf24;
+  color: #171713;
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(251, 191, 36, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.13) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, black, transparent 84%);
+}
